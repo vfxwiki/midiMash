@@ -1,0 +1,78 @@
+# Streambyter - Audeonic Apps
+# BopPad 12 strikes: (4 to 12 notes & cc remap)
+
+############Edit bellow################
+IF LOAD
+ ## IN CONFIG
+ ASS K70 = 24 30 26 2A # note inputs
+ ASS K80 = 4 #number of notes
+ ASS K82 = 0E #initial strike cc 
+ ASS K83 = 30 70 #strike cc position
+
+ ## OUT CONFIG
+ # pad notes 
+ # GM midi drums config.
+ # tested with sampleTank kits & DrumJam: David Langguth kit
+ ASS K0 = 24 35 31 #kick , cymbal(x2)
+ ASS K3 = 30 2F 2B #x3 toms
+ ASS K6 = 26 27 25 #x2 snares, x1 stick
+ ASS K9 = 2A 2E 33 #closedHH, openHH, cymbal
+END
+
+## REMAP CC (not initial strike)
+## boppad cc set up
+#BX 0F = XX 0f #cc15(0F):velocity
+#BX 10 = XX 21 #cc16(10):radius
+#BX 11 = XX 22 #cc17(11):radius(rel)
+#BX 12 = XX 12 #cc18(12):pressure
+#############edit above##############
+
+# handle note on
+# (retain for when strike CC arrives)
+9X XX 00 = 8X #rewrite note on + velocity to note off
+IF MT == 90
+ ASS L0 = M0 M1 M2
+END
+
+# handle strike CC
+
+IF MT == B0
+ IF M1 == K82
+   # determine which pad into I2
+   ASS I0 = 0 0 0
+   IF I0 < K80 +L #loop each pad
+     MAT I1 = 70 + I0 #get pad input note into I1
+
+     # do we have a match?
+     IF L1 == KI1
+       MAT I2 = I1 + 0 #RETAIN PAD, OUT 0 INDEX
+       MAT I0 = K80 + 1 #break loop
+     END
+     MAT I0 = I0 + 1
+   END
+
+   # we matched a base note
+   IF I2 != 0
+     # determine which position(default 0)
+     # and adjust I2 to point to
+     # correct out note
+     MAT I2 = I2 - 70 #get pad 
+     MAT I2 = I2 * 3 #get note index
+     IF M2 >= K83
+       MAT I2 = I2 + 1 #zone 1 or 2
+       IF M2 > K84
+         MAT I2 = I2 + 1 #zone 2
+       END
+     END
+     # send note on
+     SND L0 KI2 L2
+     # send note off with delay
+     MAT L0 = L0 - 10
+     SND L0 KI3 00 +D300
+   END
+ END
+END
+
+##block everything except notes
+#XX = XX +B
+##################################
